@@ -17,7 +17,6 @@ public class AccountFactoryImpl implements AccountFactory {
 
   @Override
   public Account createInstance(String username, String password, Role role) {
-    log.debug("Creating account {} with role {}", username, role);
     return Account.builder()
         .name(username)
         .id(UUID.randomUUID().toString())

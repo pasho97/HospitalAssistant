@@ -3,6 +3,8 @@ package com.hospital.assistant;
 import com.hospital.assistant.account.repo.AccountFactory;
 import com.hospital.assistant.account.repo.AccountRepoInMemory;
 import com.hospital.assistant.account.repo.AccountRepository;
+import com.hospital.assistant.auth.JwtAuthenticationFilter;
+import com.hospital.assistant.auth.JwtAuthorizationFilter;
 import com.hospital.assistant.model.Account;
 import com.hospital.assistant.model.Role;
 import java.util.Arrays;
@@ -15,7 +17,13 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.authentication.configurers.provisioning.InMemoryUserDetailsManagerConfigurer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class ApplicationConfig extends WebSecurityConfigurerAdapter {
@@ -44,19 +52,28 @@ public class ApplicationConfig extends WebSecurityConfigurerAdapter {
     return new AccountRepoInMemory(Arrays.asList(googleAssistantAcc, testAcc));
   }
 
+  private static final String[] PUBLIC_APIS = new String[]{"/account", "/api", "/api/authentication"};
+
+  @Autowired private AccountRepository accountRepository;
+  @Autowired private AuthenticationEventPublisher authEventPublisher;
+
   @Override
   protected void configure(HttpSecurity http) throws Exception {
-    http
+    http.cors().and()
         .csrf().disable()
-        .authorizeRequests().anyRequest().authenticated()
+        .authorizeRequests()
+        .antMatchers(PUBLIC_APIS).permitAll()
+        .anyRequest().authenticated()
         .and()
-        .httpBasic();
+        .addFilter(new BasicAuthenticationFilter(authenticationManager()))
+        .addFilter(new JwtAuthenticationFilter(authenticationManager()))
+        .addFilter(new JwtAuthorizationFilter(authenticationManager()))
+        .sessionManagement()
+        .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
   }
 
-  @Autowired
-  public void configureGlobal(AuthenticationManagerBuilder auth, AccountRepository accountRepository,
-                              AuthenticationEventPublisher authEventPublisher)
-      throws Exception {
+  @Override
+  public void configure(AuthenticationManagerBuilder auth) throws Exception {
     InMemoryUserDetailsManagerConfigurer<AuthenticationManagerBuilder> authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = auth
         .inMemoryAuthentication();
 
@@ -67,8 +84,48 @@ public class ApplicationConfig extends WebSecurityConfigurerAdapter {
           .roles(account.getRole().name())
           .and();
     }
-    authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer.passwordEncoder(new BCryptPasswordEncoder());
+    authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer.passwordEncoder(passwordEncoder());
 
     auth.authenticationEventPublisher(authEventPublisher);
   }
+
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", new CorsConfiguration().applyPermitDefaultValues());
+
+    return source;
+  }
+//  @Override
+//  protected void configure(HttpSecurity http) throws Exception {
+//    http
+//        .csrf().disable()
+//        .authorizeRequests().anyRequest().authenticated()
+//        .and()
+//        .httpBasic();
+//  }
+//
+//  @Autowired
+//  public void configureGlobal(AuthenticationManagerBuilder auth, AccountRepository accountRepository,
+//                              AuthenticationEventPublisher authEventPublisher)
+//      throws Exception {
+//    InMemoryUserDetailsManagerConfigurer<AuthenticationManagerBuilder> authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = auth
+//        .inMemoryAuthentication();
+//
+//    for (Account account : accountRepository.getAccounts()) {
+//      authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer
+//          .withUser(account.getName())
+//          .password(account.getPasswordHash())
+//          .roles(account.getRole().name())
+//          .and();
+//    }
+//    authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer.passwordEncoder(new BCryptPasswordEncoder());
+//
+//    auth.authenticationEventPublisher(authEventPublisher);
+//  }
 }
