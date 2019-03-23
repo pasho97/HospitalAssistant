@@ -7,6 +7,7 @@ import com.google.api.services.dialogflow.v2.model.GoogleCloudDialogflowV2Webhoo
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.concurrent.CompletableFuture;
 
 import com.hospital.assistant.account.repo.AccountRepository;
 import com.hospital.assistant.model.Account;
@@ -40,15 +41,18 @@ public class AssistantController {
         JsonGenerator jsonGenerator = jacksonFactory.createJsonGenerator(stringWriter);
         GoogleCloudDialogflowV2WebhookResponse response = new GoogleCloudDialogflowV2WebhookResponse();
 
-        Intents.getIntentsMap().forEach((key, pair) -> {
-            if (key.equals(parse.getQueryResult().getIntent().getDisplayName())) { // matched intent
-                for (Account account : repo.getAccounts()) {
-                    if (account.getRole() == pair.getValue()) {
-                        // send push notification to all such people
+        CompletableFuture.runAsync(() ->
+            Intents.getIntentsMap().forEach((key, pair) -> {
+                if (key.equals(parse.getQueryResult().getIntent().getDisplayName())) { // matched intent
+                    for (Account account : repo.getAccounts()) {
+                        if (account.getRole() == pair.getValue()) {
+                            // send push notification to all such people
+                            System.out.println(String.format("sent push notification to '%s'", account.getName()));
+                        }
                     }
                 }
-            }
-        });
+            })
+        );
 
         response.setFulfillmentText("Your request has been acknowledged. A medical staff personnel will be here shortly");
         jsonGenerator.serialize(response);
