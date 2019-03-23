@@ -3,22 +3,17 @@ package com.hospital.assistant.api;
 import com.hospital.assistant.account.repo.AccountFactory;
 import com.hospital.assistant.account.repo.AccountRepository;
 import com.hospital.assistant.api.dto.RegisterAccountDto;
-import com.hospital.assistant.auth.SecurityConstants;
-import com.hospital.assistant.auth.SecurityUtil;
 import com.hospital.assistant.model.Account;
 import com.hospital.assistant.model.FirebaseData;
-import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import java.util.List;
+import com.hospital.assistant.model.Location;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -68,33 +63,38 @@ public class ServerController {
   @RequestMapping(path = "/updateToken", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity updateFirebaseToken(@RequestBody FirebaseData firebaseData,
                                             @RequestHeader HttpHeaders httpHeaders) {
-    List<String> authorizationTokens = httpHeaders.get(HttpHeaders.AUTHORIZATION);
-    //This should never happen as this method requires auth
-    if (CollectionUtils.isEmpty(authorizationTokens)) {
-      return ResponseEntity.unprocessableEntity().body("Bad Auth");
-    }
-    String token = authorizationTokens.get(0);
-    String username;
-    if (token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
-      Jws<Claims> jwsToken = SecurityUtil.decryptJwsToken(token);
-      username = jwsToken.getSignature();
-    } else {
-      try {
-        username = SecurityUtil.decryptBasicAuthToken(token).split(":")[0];
-      } catch (Base64DecodingException e) {
-        return ResponseEntity.unprocessableEntity().body("Cannot decrypt basic auth token");
-      }
-    }
 
-    Optional<Account> optionalAccount = accountRepository.getAccounts().stream().filter(account -> account.getName()
-        .equals(username)).findFirst();
+    String username = ServerUtils.extractUsernameFromHeaders(httpHeaders);
+    if (username == null) {
+      return ResponseEntity.unprocessableEntity().body("Error! Cannot resolve user");
+    }
+    Optional<Account> optionalAccount = accountRepository.getAccounts().stream()
+        .filter(account -> account.getName().equals(username))
+        .findFirst();
     if (!optionalAccount.isPresent()) {
       return ResponseEntity.badRequest().body("No associated account found to set the token to");
     }
-
     log.info("Setting firebase data {} to user {}", firebaseData.toString(), username);
     optionalAccount.get().setFirebaseData(firebaseData);
     return ResponseEntity.ok("Successfully updated firebase token of " + username);
   }
 
+  @PostMapping(path = "/updateLocation", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity updateLocation(@RequestBody Location location, @RequestHeader HttpHeaders httpHeaders) {
+    String username = ServerUtils.extractUsernameFromHeaders(httpHeaders);
+    if (username == null) {
+      return ResponseEntity.unprocessableEntity().body("Error! Cannot resolve user");
+    }
+    Optional<Account> optionalAccount = accountRepository.getAccounts().stream()
+        .filter(account -> account.getName().equals(username))
+        .findFirst();
+    if (!optionalAccount.isPresent()) {
+      return ResponseEntity.badRequest().body("No associated account found to update location to");
+    }
+    Account account = optionalAccount.get();
+    log.info("Updating location of {} {}", account.getRole(), account.getName());
+    account.setLocation(location);
+    return ResponseEntity.ok("Successfully updated location token of " + username);
+
+  }
 }

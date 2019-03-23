@@ -11,4 +11,5 @@ public class Account {
   private String passwordHash;
   private Role role;
   private FirebaseData firebaseData;
+  private Location location;
 }

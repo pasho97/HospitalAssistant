@@ -101,31 +101,4 @@ public class ApplicationConfig extends WebSecurityConfigurerAdapter {
 
     return source;
   }
-//  @Override
-//  protected void configure(HttpSecurity http) throws Exception {
-//    http
-//        .csrf().disable()
-//        .authorizeRequests().anyRequest().authenticated()
-//        .and()
-//        .httpBasic();
-//  }
-//
-//  @Autowired
-//  public void configureGlobal(AuthenticationManagerBuilder auth, AccountRepository accountRepository,
-//                              AuthenticationEventPublisher authEventPublisher)
-//      throws Exception {
-//    InMemoryUserDetailsManagerConfigurer<AuthenticationManagerBuilder> authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = auth
-//        .inMemoryAuthentication();
-//
-//    for (Account account : accountRepository.getAccounts()) {
-//      authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer
-//          .withUser(account.getName())
-//          .password(account.getPasswordHash())
-//          .roles(account.getRole().name())
-//          .and();
-//    }
-//    authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer.passwordEncoder(new BCryptPasswordEncoder());
-//
-//    auth.authenticationEventPublisher(authEventPublisher);
-//  }
 }
