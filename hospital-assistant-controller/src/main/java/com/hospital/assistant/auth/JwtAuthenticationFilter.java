@@ -1,7 +1,7 @@
 package com.hospital.assistant.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hospital.assistant.JsonUtil;
 import com.hospital.assistant.model.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -26,7 +26,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Slf4j
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
-  private static final ObjectMapper mapper = new ObjectMapper();
   private final AuthenticationManager authenticationManager;
 
   public JwtAuthenticationFilter(AuthenticationManager authenticationManager) {
@@ -38,13 +37,16 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
   @Override
   public Authentication attemptAuthentication(HttpServletRequest request,
                                               HttpServletResponse response) throws AuthenticationException {
-    String username = "";
     log.info("Attempting auth {}", request.getRequestURI());
+    String username = "";
     String password = "";
     Role role;
     try {
       String body = request.getReader().lines().collect(Collectors.joining("\n"));
-      JsonNode node = mapper.readTree(body);
+      JsonNode node = JsonUtil.toJsonNode(body);
+      if (node == null) {
+        return null;
+      }
       username = node.get(SecurityConstants.USERNAME_KEY).asText();
       password = node.get(SecurityConstants.PASSWORD_KEY).asText();
       role = Role.valueOf(node.get(SecurityConstants.ROLE_KEY).asText());
@@ -70,7 +72,6 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         .stream()
         .map(GrantedAuthority::getAuthority)
         .collect(Collectors.toList());
-
     byte[] signingKey = SecurityConstants.JWT_SECRET.getBytes();
 
     String token = Jwts.builder()
@@ -80,9 +81,9 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         .setAudience(SecurityConstants.TOKEN_AUDIENCE)
         .setSubject(user.getUsername())
         .setExpiration(new Date(System.currentTimeMillis() + 864000000))
-        .claim("rol", roles)
+        .claim("role", roles)
         .compact();
 
-    response.addHeader(SecurityConstants.TOKEN_HEADER, SecurityConstants.TOKEN_PREFIX + token);
+    response.addHeader(SecurityConstants.TOKEN_HEADER, SecurityConstants.JWT_TOKEN_PREFIX + token);
   }
 }

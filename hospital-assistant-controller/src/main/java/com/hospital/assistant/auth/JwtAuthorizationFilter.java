@@ -1,10 +1,8 @@
 package com.hospital.assistant.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -25,7 +23,6 @@ import org.springframework.util.StringUtils;
 
 @Slf4j
 public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
-  private static final ObjectMapper mapper = new ObjectMapper();
 
   public JwtAuthorizationFilter(AuthenticationManager authenticationManager) {
     super(authenticationManager);
@@ -35,7 +32,7 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                   FilterChain filterChain) throws IOException, ServletException {
     String header = request.getHeader(SecurityConstants.TOKEN_HEADER);
-    if (StringUtils.isEmpty(header) || !header.startsWith(SecurityConstants.TOKEN_PREFIX)) {
+    if (StringUtils.isEmpty(header) || !header.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
       filterChain.doFilter(request, response);
       return;
     }
@@ -49,11 +46,7 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
     String token = request.getHeader(SecurityConstants.TOKEN_HEADER);
     if (!StringUtils.isEmpty(token)) {
       try {
-        byte[] signingKey = SecurityConstants.JWT_SECRET.getBytes();
-
-        Jws<Claims> parsedToken = Jwts.parser()
-            .setSigningKey(signingKey)
-            .parseClaimsJws(token.replace("Bearer ", ""));
+        Jws<Claims> parsedToken = SecurityUtil.decryptJwsToken(token);
 
         String username = parsedToken
             .getBody()
@@ -82,4 +75,5 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
 
     return null;
   }
+
 }
