@@ -4,8 +4,8 @@ import com.hospital.assistant.model.Account;
 import com.hospital.assistant.model.Role;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Primary
 @Component
 public class AccountFactoryImpl implements AccountFactory {
-  private static final PasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
+  @Autowired private PasswordEncoder passwordEncoder;
 
   @Override
   public Account createInstance(String username, String password, Role role) {
@@ -21,7 +21,7 @@ public class AccountFactoryImpl implements AccountFactory {
         .name(username)
         .id(UUID.randomUUID().toString())
         .role(role)
-        .passwordHash(PASSWORD_ENCODER.encode(password))
+        .passwordHash(passwordEncoder.encode(password))
         .build();
   }
 }

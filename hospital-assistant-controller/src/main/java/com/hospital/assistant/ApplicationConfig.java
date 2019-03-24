@@ -3,6 +3,7 @@ package com.hospital.assistant;
 import com.hospital.assistant.account.repo.AccountFactory;
 import com.hospital.assistant.account.repo.AccountRepoInMemory;
 import com.hospital.assistant.account.repo.AccountRepository;
+import com.hospital.assistant.auth.AuthProvider;
 import com.hospital.assistant.auth.JwtAuthenticationFilter;
 import com.hospital.assistant.auth.JwtAuthorizationFilter;
 import com.hospital.assistant.model.Account;
@@ -14,7 +15,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationEventPublisher;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.authentication.configurers.provisioning.InMemoryUserDetailsManagerConfigurer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -41,6 +41,7 @@ public class ApplicationConfig extends WebSecurityConfigurerAdapter {
   @Value("${test.account.defaultRole:ADMIN}")
   private Role testAccountRole;
 
+  @Autowired private AuthProvider authProvider;
 
   @Bean
   @Autowired
@@ -74,18 +75,7 @@ public class ApplicationConfig extends WebSecurityConfigurerAdapter {
 
   @Override
   public void configure(AuthenticationManagerBuilder auth) throws Exception {
-    InMemoryUserDetailsManagerConfigurer<AuthenticationManagerBuilder> authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = auth
-        .inMemoryAuthentication();
-
-    for (Account account : accountRepository.getAccounts()) {
-      authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer = authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer
-          .withUser(account.getName())
-          .password(account.getPasswordHash())
-          .roles(account.getRole().name())
-          .and();
-    }
-    authenticationManagerBuilderInMemoryUserDetailsManagerConfigurer.passwordEncoder(passwordEncoder());
-
+    auth.authenticationProvider(authProvider);
     auth.authenticationEventPublisher(authEventPublisher);
   }
 
