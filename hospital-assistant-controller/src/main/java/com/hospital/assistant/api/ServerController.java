@@ -95,6 +95,10 @@ public class ServerController {
     log.info("Updating location of {} {}", account.getRole(), account.getName());
     account.setLocation(location);
     return ResponseEntity.ok("Successfully updated location token of " + username);
+  }
 
+  @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity login() {
+    return ResponseEntity.ok("Success");
   }
 }
