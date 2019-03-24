@@ -2,6 +2,7 @@ package com.hospital.assistant.account.repo;
 
 import com.hospital.assistant.model.Account;
 import com.hospital.assistant.model.Role;
+import java.util.ArrayList;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ public class AccountFactoryImpl implements AccountFactory {
         .name(username)
         .id(UUID.randomUUID().toString())
         .role(role)
+        .interval(new ArrayList<>())
         .passwordHash(passwordEncoder.encode(password))
         .build();
   }

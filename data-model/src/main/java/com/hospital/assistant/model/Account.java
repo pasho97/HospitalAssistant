@@ -1,5 +1,7 @@
 package com.hospital.assistant.model;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,5 +13,5 @@ public class Account {
   private String passwordHash;
   private Role role;
   private FirebaseData firebaseData;
-  private Location location;
+  private List<IntervalDto> interval = new ArrayList<>();
 }

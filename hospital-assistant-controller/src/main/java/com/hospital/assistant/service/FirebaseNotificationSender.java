@@ -12,6 +12,9 @@ import com.hospital.assistant.model.Account;
 import com.hospital.assistant.model.IntentDto;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class FirebaseNotificationSender {
+  private static final String PATIENT_NEEDS_ASSISTANCE_PRIORITY_TEMPLATE = "Priority: %s! Patient needs assistance";
   @Value("${firebase.api.databaseUrl}") private String databaseUrl;
   @Value("${firebase.api.keyFile}") private String credentialsFile;
   public static final String TITLE = "title";
@@ -49,13 +53,17 @@ public class FirebaseNotificationSender {
                 account.getRole());
       return;
     }
-
-    MulticastMessage message = MulticastMessage.builder()
-        .setNotification(new Notification(intentDto.getMessage(), intentDto.getMessage()))
-        .addAllTokens(Collections.singletonList(account.getFirebaseData().getToken()))
-        .build();
-    BatchResponse response = FirebaseMessaging.getInstance().sendMulticast(message);
-    System.out.println(response.getSuccessCount() + " messages were sent successfully");
+    LocalDateTime now = LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault());
+    if (account.getInterval().stream().anyMatch(intervalDto -> intervalDto.getStart()
+        .isBefore(now) && intervalDto.getEnd().isAfter(now))) {
+      MulticastMessage message = MulticastMessage.builder()
+          .setNotification(new Notification(String.format(PATIENT_NEEDS_ASSISTANCE_PRIORITY_TEMPLATE,
+                                                          intentDto.getPriority()), intentDto.getMessage()))
+          .addAllTokens(Collections.singletonList(account.getFirebaseData().getToken()))
+          .build();
+      BatchResponse response = FirebaseMessaging.getInstance().sendMulticast(message);
+      log.info(" {} messages were sent successfully to user {}", response.getSuccessCount(), account.getName());
+    }
   }
 
 }

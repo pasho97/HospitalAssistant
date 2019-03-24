@@ -1,11 +1,10 @@
 package com.hospital.assistant.auth;
 
 import static com.hospital.assistant.auth.SecurityConstants.BASIC_AUTH_TOKEN_PREFIX;
-import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
-import com.sun.org.apache.xml.internal.security.utils.Base64;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
+import java.util.Base64;
 
 public class SecurityUtil {
   public static Jws<Claims> decryptJwsToken(String token) {
@@ -18,7 +17,7 @@ public class SecurityUtil {
     return parsedToken;
   }
 
-  public static String decryptBasicAuthToken(String basicAuthToken) throws Base64DecodingException {
-    return new String(Base64.decode(basicAuthToken.replace(BASIC_AUTH_TOKEN_PREFIX, "")));
+  public static String decryptBasicAuthToken(String basicAuthToken) {
+    return new String(Base64.getDecoder().decode(basicAuthToken.replace(BASIC_AUTH_TOKEN_PREFIX, "")));
   }
 }

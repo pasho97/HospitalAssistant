@@ -5,7 +5,8 @@ import com.hospital.assistant.account.repo.AccountRepository;
 import com.hospital.assistant.api.dto.RegisterAccountDto;
 import com.hospital.assistant.model.Account;
 import com.hospital.assistant.model.FirebaseData;
-import com.hospital.assistant.model.Location;
+import com.hospital.assistant.model.IntervalDto;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -55,7 +58,6 @@ public class ServerController {
              registerAccountDto.getUsername(),
              registerAccountDto.getRole());
 
-
     String msg = String.format(SUCCESSFUL_REGISTRATION_TEMPLATE, registerAccountDto.getUsername());
     return ResponseEntity.ok().body(msg);
   }
@@ -79,26 +81,79 @@ public class ServerController {
     return ResponseEntity.ok("Successfully updated firebase token of " + username);
   }
 
-  @PostMapping(path = "/updateLocation", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity updateLocation(@RequestBody Location location, @RequestHeader HttpHeaders httpHeaders) {
+  @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity login() {
+    return ResponseEntity.ok("Success");
+  }
+
+  @GetMapping(path = "/workSchedule", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity getSchedule(@RequestHeader HttpHeaders httpHeaders) {
     String username = ServerUtils.extractUsernameFromHeaders(httpHeaders);
-    if (username == null) {
-      return ResponseEntity.unprocessableEntity().body("Error! Cannot resolve user");
-    }
+    Optional<Account> optionalAccount = accountRepository.getAccounts().stream()
+        .filter(account -> account.getName().equals(username))
+        .findFirst();
+    return optionalAccount.<ResponseEntity>map(account -> ResponseEntity.ok(account.getInterval())).orElseGet(() -> ResponseEntity
+        .badRequest()
+        .body("Cannot link request to an account"));
+
+  }
+
+  @DeleteMapping(path = "/stopNotifications")
+  public ResponseEntity stopNotificationsEndpoint(@RequestHeader HttpHeaders httpHeaders) {
+    String username = ServerUtils.extractUsernameFromHeaders(httpHeaders);
+    Optional<Account> optionalAccount = accountRepository.getAccounts().stream()
+        .filter(account -> account.getName().equals(username))
+        .findFirst();
+    optionalAccount.ifPresent(account -> {
+      account.setFirebaseData(null);
+      log.info("Stopped notifications for user {}", account.getName());
+    });
+    return optionalAccount.<ResponseEntity>map(account ->
+                                                   ResponseEntity.ok("Successfully stopped notifications for user"))
+        .orElseGet(() -> ResponseEntity.badRequest().body("Cannot link request to an account"));
+  }
+
+  @PostMapping(path = "/workSchedule", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity addToWorkSchedule(@RequestBody IntervalDto intervalDto,
+                                          @RequestHeader HttpHeaders httpHeaders) {
+    String username = ServerUtils.extractUsernameFromHeaders(httpHeaders);
     Optional<Account> optionalAccount = accountRepository.getAccounts().stream()
         .filter(account -> account.getName().equals(username))
         .findFirst();
     if (!optionalAccount.isPresent()) {
-      return ResponseEntity.badRequest().body("No associated account found to update location to");
+      return ResponseEntity.badRequest().body("No associated account found to set the token to");
     }
+
     Account account = optionalAccount.get();
-    log.info("Updating location of {} {}", account.getRole(), account.getName());
-    account.setLocation(location);
-    return ResponseEntity.ok("Successfully updated location token of " + username);
+    account.getInterval().add(intervalDto);
+    return ResponseEntity.ok("Updated work schedule successfully");
   }
 
-  @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity login() {
-    return ResponseEntity.ok("Success");
+  @GetMapping(path = "/workSchedule/current", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public String getCurrentShift(@RequestHeader HttpHeaders httpHeaders) {
+    String username = ServerUtils.extractUsernameFromHeaders(httpHeaders);
+    Optional<Account> optionalAccount = accountRepository.getAccounts().stream()
+        .filter(account -> account.getName().equals(username))
+        .findFirst();
+    if (!optionalAccount.isPresent()) {
+      return "No associated account found to set the token to";
+    }
+
+    log.info("User {} requested his current shift", username);
+    Account account = optionalAccount.get();
+    LocalDateTime now = LocalDateTime.now();
+    Optional<IntervalDto> optionalIntervalDto = account.getInterval().stream()
+        .filter(intervalDto -> intervalDto.getStart().isBefore(now) && intervalDto.getEnd().isAfter(now)).findFirst();
+
+    if (!optionalIntervalDto.isPresent()) {
+      return "You currently have no shifts.";
+    }
+
+    LocalDateTime shiftEnd = optionalIntervalDto.get().getEnd();
+    return String.format("Your shift ends on %d.%d %d:%d ",
+                                           shiftEnd.getDayOfMonth(),
+                                           shiftEnd.getMonthValue(),
+                                           shiftEnd.getHour(),
+                                           shiftEnd.getMinute());
   }
 }

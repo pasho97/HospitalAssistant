@@ -2,7 +2,6 @@ package com.hospital.assistant.api;
 
 import com.hospital.assistant.auth.SecurityConstants;
 import com.hospital.assistant.auth.SecurityUtil;
-import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import java.util.List;
@@ -22,11 +21,7 @@ public class ServerUtils {
       Jws<Claims> jwsToken = SecurityUtil.decryptJwsToken(token);
       username = jwsToken.getSignature();
     } else {
-      try {
-        username = SecurityUtil.decryptBasicAuthToken(token).split(":")[0];
-      } catch (Base64DecodingException e) {
-        return null;
-      }
+      username = SecurityUtil.decryptBasicAuthToken(token).split(":")[0];
     }
 
     return username;

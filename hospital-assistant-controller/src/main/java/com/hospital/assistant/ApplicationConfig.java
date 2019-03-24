@@ -7,7 +7,12 @@ import com.hospital.assistant.auth.AuthProvider;
 import com.hospital.assistant.auth.JwtAuthenticationFilter;
 import com.hospital.assistant.auth.JwtAuthorizationFilter;
 import com.hospital.assistant.model.Account;
+import com.hospital.assistant.model.IntervalDto;
 import com.hospital.assistant.model.Role;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,6 +54,12 @@ public class ApplicationConfig extends WebSecurityConfigurerAdapter {
     Account googleAssistantAcc = accountFactory.createInstance(googleAssistantUsername,
                                                                googleAssistantPassword,
                                                                googleAssistantRole);
+    googleAssistantAcc.getInterval().add(new IntervalDto(LocalDateTime.ofInstant(Instant.now()
+                                                                                     .minus(1, ChronoUnit.HOURS),
+                                                                                 ZoneId.systemDefault()),
+                                                         LocalDateTime.ofInstant(Instant.now()
+                                                                                     .plus(7, ChronoUnit.HOURS),
+                                                                                 ZoneId.systemDefault())));
     Account testAcc = accountFactory.createInstance(testAccountUsername, testAccountPassword, testAccountRole);
     return new AccountRepoInMemory(Arrays.asList(googleAssistantAcc, testAcc));
   }
